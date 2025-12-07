@@ -4,7 +4,7 @@ import os
 
 # ----------------- CONFIG -----------------
 ICON_SIZE = (200, 200)      # width, height in pixels
-BG_IMAGE = "Harumasa.png" # full-screen background image
+BG_IMAGE = "imgs/Harumasa.png" # full-screen background image
 BUTTON_ACTIVE_BG = "#aaaaaa"
 
 # ----------------- APP LAUNCH FUNCTIONS -----------------
@@ -73,10 +73,10 @@ def load_icon(filename):
         placeholder = Image.new("RGBA", ICON_SIZE, (128,128,128,255))
         return ImageTk.PhotoImage(placeholder)
 
-chrome_logo   = load_icon("chrome.png")
-facetime_logo = load_icon("facetime.png")
-roblox_logo   = load_icon("roblox.png")
-vscode_logo   = load_icon("vscode.png")
+chrome_logo   = load_icon("imgs/chrome.png")
+facetime_logo = load_icon("imgs/facetime.png")
+roblox_logo   = load_icon("imgs/roblox.png")
+vscode_logo   = load_icon("imgs/vscode.png")
 
 # ----------------- BUTTON GRID -----------------
 buttons = {
