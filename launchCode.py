@@ -1,10 +1,11 @@
 import tkinter as tk
 from PIL import Image, ImageTk
 import os
+import cv2
 
 # ----------------- CONFIG -----------------
 ICON_SIZE = (200, 200)      # width, height in pixels
-BG_IMAGE = "imgs/Harumasa.png" # full-screen background image
+BG_IMAGE = "imgs/Harumasa2.gif"  # fullscreen background
 BUTTON_ACTIVE_BG = "#aaaaaa"
 
 # ----------------- APP LAUNCH FUNCTIONS -----------------
@@ -43,35 +44,109 @@ def on_key(event):
 
 root.bind("<Key>", on_key)
 
-# ----------------- BACKGROUND IMAGE -----------------
-def load_background_image(filename):
-    try:
-        img = Image.open(filename).convert("RGBA")
-        screen_width = root.winfo_screenwidth()
-        screen_height = root.winfo_screenheight()
-        img = img.resize((screen_width, screen_height), Image.Resampling.LANCZOS)
-        return ImageTk.PhotoImage(img)
-    except Exception as e:
-        print(f"Failed to load background {filename}: {e}")
-        return None
-
-bg_img = load_background_image(BG_IMAGE)
+# ----------------- BACKGROUND RENDERING HELPERS -----------------
 
 canvas = tk.Canvas(root, width=root.winfo_screenwidth(), height=root.winfo_screenheight())
 canvas.pack(fill="both", expand=True)
-if bg_img:
-    canvas.create_image(0, 0, anchor="nw", image=bg_img)
 
-# ----------------- LOAD ICONS WITH TRANSPARENCY -----------------
+gif_frames = None
+gif_durations = None
+video_cap = None
+
+def play_static_background(path):
+    try:
+        img = Image.open(path).convert("RGBA")
+        img = img.resize((root.winfo_screenwidth(), root.winfo_screenheight()), Image.Resampling.LANCZOS)
+        bg = ImageTk.PhotoImage(img)
+        canvas.img_ref = bg
+        canvas.create_image(0, 0, anchor="nw", image=bg)
+    except Exception as e:
+        print("Static background error:", e)
+
+
+def play_gif_background(gif_path):
+    canvas.delete("all")
+
+    try:
+        gif = Image.open(gif_path)
+    except Exception as e:
+        print(f"Failed to load GIF background: {e}")
+        return
+
+    frames = []
+    durations = []
+
+    # Load all frames into memory FIRST (much faster playback)
+    try:
+        while True:
+            frame = gif.copy().convert("RGBA")
+            frame = frame.resize((root.winfo_screenwidth(), root.winfo_screenheight()))
+            frames.append(ImageTk.PhotoImage(frame))
+
+            # ignore GIF delay and force fast refresh
+            durations.append(16)  # ~60fps
+            gif.seek(gif.tell() + 1)
+    except EOFError:
+        pass
+
+    # Create image once (we just update its contents)
+    image_on_canvas = canvas.create_image(0, 0, anchor="nw", image=frames[0])
+    canvas.img_ref = frames[0]  # prevent GC
+
+    def animate(index=0):
+        frame = frames[index]
+        canvas.itemconfig(image_on_canvas, image=frame)
+        canvas.img_ref = frame
+        next_index = (index + 1) % len(frames)
+        root.after(durations[index], animate, next_index)
+
+    animate()
+
+
+def play_video_background(path):
+    global video_cap
+    canvas.delete("all")
+    video_cap = cv2.VideoCapture(path)
+
+    def update():
+        global video_cap
+        if video_cap is None:
+            return
+
+        ret, frame = video_cap.read()
+        if not ret:
+            video_cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
+            return root.after(30, update)
+
+        frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGBA)
+        frame = cv2.resize(frame, (root.winfo_screenwidth(), root.winfo_screenheight()))
+        img = ImageTk.PhotoImage(Image.fromarray(frame))
+
+        canvas.img_ref = img
+        canvas.create_image(0, 0, anchor="nw", image=img)
+
+        root.after(30, update)
+
+    update()
+
+# Decide what type of background to play
+lower = BG_IMAGE.lower()
+
+if lower.endswith(".mp4") or lower.endswith(".mov"):
+    play_video_background(BG_IMAGE)
+elif lower.endswith(".gif"):
+    play_gif_background(BG_IMAGE)
+else:
+    play_static_background(BG_IMAGE)
+
+# ----------------- LOAD ICONS -----------------
 def load_icon(filename):
     try:
         img = Image.open(filename).convert("RGBA")
         img = img.resize(ICON_SIZE, Image.Resampling.LANCZOS)
         return ImageTk.PhotoImage(img)
-    except Exception as e:
-        print(f"Failed to load {filename}: {e}")
-        placeholder = Image.new("RGBA", ICON_SIZE, (128,128,128,255))
-        return ImageTk.PhotoImage(placeholder)
+    except:
+        return ImageTk.PhotoImage(Image.new("RGBA", ICON_SIZE, (128,128,128,255)))
 
 chrome_logo   = load_icon("imgs/chrome.png")
 facetime_logo = load_icon("imgs/facetime.png")
@@ -86,7 +161,6 @@ buttons = {
     "vscode": vscode_logo,
 }
 
-# Position buttons in a 2x2 grid
 row_col_map = {
     "chrome": (0, 0),
     "facetime": (0, 1),
@@ -94,17 +168,14 @@ row_col_map = {
     "vscode": (1, 1),
 }
 
-# Create buttons on the canvas
 btn_widgets = {}
 for name, img in buttons.items():
     r, c = row_col_map[name]
     x = (c + 0.5) * root.winfo_screenwidth() / 2
     y = (r + 0.5) * root.winfo_screenheight() / 2
-    btn = tk.Button(root, image=img,
-                    activebackground=BUTTON_ACTIVE_BG,
+    btn = tk.Button(root, image=img, activebackground=BUTTON_ACTIVE_BG,
                     command=launch_map[name], relief="flat", borderwidth=0)
-    btn_window = canvas.create_window(x, y, window=btn, anchor="center")
     btn_widgets[name] = btn
+    canvas.create_window(x, y, window=btn, anchor="center")
 
-# ----------------- RUN APP -----------------
 root.mainloop()
