@@ -5,25 +5,25 @@ import cv2
 
 # ----------------- CONFIG -----------------
 ICON_SIZE = (200, 200)      # width, height in pixels
-BG_IMAGE = "imgs/Harumasa2.gif"  # fullscreen background
+BG_IMAGE = "imgs/Harumasa.png"  # fullscreen background
 BUTTON_ACTIVE_BG = "#aaaaaa"
 
 # ----------------- APP LAUNCH FUNCTIONS -----------------
 def open_chrome():
     os.system("open -a 'Google Chrome' &")
-
+    os._exit(0)
 def open_facetime():
     os.system("open -a 'FaceTime' &")
-
+    os._exit(0)
 def open_roblox():
     os.system("open -a 'Roblox' &")
-
+    os._exit(0)
 def open_vscode():
     if os.system("which code > /dev/null 2>&1") == 0:
         os.system("code &")
     else:
         os.system("open -a 'Visual Studio Code' &")
-
+    os._exit(0)
 launch_map = {
     "chrome": open_chrome,
     "facetime": open_facetime,
