@@ -1,10 +1,14 @@
 import tkinter as tk
 from PIL import Image, ImageTk
 import os
+import json
+from tkinter import filedialog
+from tkinter import messagebox
+
 
 
 # ----------------- CONFIG -----------------
-ICON_SIZE = (200, 200)      # width, height in pixels
+ICON_SIZE = (120, 120)      # width, height in pixels
 if os.path.exists("config.txt"):
     with open("config.txt", "r") as f:
         BG_IMAGE = f.read().strip()
@@ -13,6 +17,19 @@ else:
 
 BUTTON_ACTIVE_BG = "#aaaaaa"
 CONFIG_FILE = "config.txt"
+APPS_FILE = "apps.json"
+
+def load_apps():
+    if os.path.exists(APPS_FILE):
+        with open(APPS_FILE, "r") as f:
+            return json.load(f)
+    return {}
+
+def save_apps(apps):
+    with open(APPS_FILE, "w") as f:
+        json.dump(apps, f, indent=4)
+
+apps = load_apps()
 
 
 # ----------------- APP LAUNCH FUNCTIONS -----------------
@@ -40,6 +57,11 @@ launch_map = {
 
 # ----------------- TKINTER WINDOW -----------------
 root = tk.Tk()
+drag_data = {
+    "item": None,
+    "x": 0,
+    "y": 0
+}
 bg_image_id = None
 bg_animation_id = None
 current_bg_type = None
@@ -129,7 +151,13 @@ def play_gif_background(gif_path):
         global bg_animation_id
         canvas.itemconfig(image_id, image=frames[i])
         canvas.img_ref = frames[i]
+    
+        # Keep buttons and gear above the background
+        canvas.tag_raise("buttons")
+        canvas.tag_raise("gear")
+    
         bg_animation_id = root.after(16, animate, (i + 1) % len(frames))
+
 
     animate()
     canvas.tag_lower("background")
@@ -183,7 +211,7 @@ def change_background():
     else:
         play_static_background(file_path)
 
-    draw_buttons()
+
     draw_gear()
 
     # Save permanently
@@ -196,7 +224,86 @@ def change_background():
     canvas.tag_raise("gear")
 
 
+def add_new_app():
+    global apps   # 🔥 MUST be first line
 
+    app_path = filedialog.askopenfilename(
+        title="Choose an App",
+        initialdir="/Applications",
+        filetypes=[("macOS Apps", "*.app")]
+    )
+    if not app_path:
+        return
+
+    icon_path = filedialog.askopenfilename(
+        title="Choose an Icon",
+        filetypes=[("Images", "*.png *.jpg *.jpeg")]
+    )
+    if not icon_path:
+        return
+
+    name = os.path.basename(app_path).replace(".app", "")
+
+    apps[name] = {
+        "path": app_path,
+        "icon": icon_path
+    }
+
+    save_apps(apps)
+
+    # 🔁 Reload + redraw
+    apps = load_apps()
+    rebuild_app_buttons()
+
+def delete_app(app_name):
+    global apps
+
+    confirm = messagebox.askyesno(
+        "Delete App",
+        f"Delete '{app_name}'?"
+    )
+
+    if not confirm:
+        return
+
+    if app_name in apps:
+        del apps[app_name]
+        save_apps(apps)
+        rebuild_app_buttons()
+
+def on_drag_start(event):
+    widget = event.widget
+
+    # Find the canvas window that holds this widget
+    for item in canvas.find_all():
+        if canvas.type(item) == "window":
+            if canvas.itemcget(item, "window") == str(widget):
+                drag_data["item"] = item
+                drag_data["x"] = event.x_root
+                drag_data["y"] = event.y_root
+                return
+
+
+def on_drag_motion(event):
+    if drag_data["item"] is None:
+        return
+
+    dx = event.x_root - drag_data["x"]
+    dy = event.y_root - drag_data["y"]
+
+    # Move the button on canvas
+    canvas.move(drag_data["item"], dx, dy)
+
+    # Keep it above the background
+    canvas.lift(drag_data["item"])
+
+    # Update drag coordinates
+    drag_data["x"] = event.x_root
+    drag_data["y"] = event.y_root
+
+
+def on_drag_release(event):
+    drag_data["item"] = None
 
 
 
@@ -209,7 +316,8 @@ def load_icon(filename):
         img = Image.open(filename).convert("RGBA")
         img = img.resize(ICON_SIZE, Image.Resampling.LANCZOS)
         return ImageTk.PhotoImage(img)
-    except:
+    except FileNotFoundError:
+        print(f"Warning: Icon not found: {filename}")
         return ImageTk.PhotoImage(Image.new("RGBA", ICON_SIZE, (128,128,128,255)))
 
 chrome_logo   = load_icon("imgs/chrome.png")
@@ -219,34 +327,12 @@ vscode_logo   = load_icon("imgs/vscode.png")
 gear_icon = Image.open("imgs/gear.png").convert("RGBA")
 gear_icon = gear_icon.resize((48, 48), Image.Resampling.LANCZOS)
 gear_icon = ImageTk.PhotoImage(gear_icon)
+plus_icon = Image.open("imgs/plus.png").convert("RGBA")
+plus_icon = plus_icon.resize((48, 48), Image.Resampling.LANCZOS)
+plus_icon = ImageTk.PhotoImage(plus_icon)
 
 
 # ----------------- BUTTON GRID -----------------
-buttons = {
-    "chrome": chrome_logo,
-    "facetime": facetime_logo,
-    "roblox": roblox_logo,
-    "vscode": vscode_logo,
-}
-
-row_col_map = {
-    "chrome": (0, 0),
-    "facetime": (0, 1),
-    "roblox": (1, 0),
-    "vscode": (1, 1),
-}
-
-btn_widgets = {}
-for name, img in buttons.items():
-    btn = tk.Button(
-        root,
-        image=img,
-        activebackground=BUTTON_ACTIVE_BG,
-        command=launch_map[name],
-        relief="flat",
-        borderwidth=0
-    )
-    btn_widgets[name] = btn
 
 gear_button = tk.Button(
     root,
@@ -259,22 +345,20 @@ gear_button = tk.Button(
     activebackground="black"
 )
 
+add_button = tk.Button(
+    root,
+    image=plus_icon,
+    command=add_new_app,
+    relief="flat",
+    borderwidth=0,
+    bg="black",
+    activebackground="black"
+)
+canvas.plus_ref = plus_icon
+
 
 canvas.gear_ref = gear_icon 
 
-
-def draw_buttons():
-    canvas.delete("buttons")
-    for name, btn in btn_widgets.items():
-        r, c = row_col_map[name]
-        x = (c + 0.5) * root.winfo_screenwidth() / 2
-        y = (r + 0.5) * root.winfo_screenheight() / 2
-        canvas.create_window(
-            x, y,
-            window=btn,
-            anchor="center",
-            tags="buttons"
-        )
 
 def draw_gear():
     canvas.delete("gear")
@@ -285,6 +369,61 @@ def draw_gear():
         anchor="se",
         tags="gear"
     )
+    canvas.create_window(
+    root.winfo_screenwidth() - 100,
+    root.winfo_screenheight() - 40,
+    window=add_button,
+    anchor="se",
+    tags="gear"
+)
+
+def rebuild_app_buttons():
+    canvas.delete("buttons")
+
+    i = 0
+    for name, data in apps.items():
+        icon = load_icon(data["icon"])
+
+        def launch(p=data["path"]):
+            os.system(f"open '{p}' &")
+            os._exit(0)
+
+        btn = tk.Button(
+            root,
+            image=icon,
+            command=launch,
+            relief="flat",
+            borderwidth=0
+        )
+        btn.image = icon
+
+        # 🖱 RIGHT CLICK = DELETE
+        btn.bind(
+            "<Button-3>",
+            lambda e, n=name: delete_app(n)
+        )
+        btn.bind("<ButtonPress-1>", on_drag_start)
+        btn.bind("<B1-Motion>", on_drag_motion)
+        btn.bind("<ButtonRelease-1>", on_drag_release)
+
+
+        r = i // 4
+        c = i % 4
+
+        x = (c + 1) * root.winfo_screenwidth() / 5
+        y = (r + 1) * root.winfo_screenheight() / 3
+
+        canvas.create_window(
+            x, y,
+            window=btn,
+            tags=("buttons", name)
+        )
+
+        i += 1
+
+    canvas.tag_raise("buttons")
+    
+
 
 lower = BG_IMAGE.lower()
 if lower.endswith(".gif"):
@@ -292,7 +431,7 @@ if lower.endswith(".gif"):
 else:
     play_static_background(BG_IMAGE)
 
-draw_buttons()
 draw_gear()
+rebuild_app_buttons()
 
 root.mainloop()

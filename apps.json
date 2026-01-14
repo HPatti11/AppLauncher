@@ -1,0 +1,22 @@
+{
+    "Chrome": {
+        "path": "/Applications/Google Chrome.app",
+        "icon": "imgs/chrome.png"
+    },
+    "FaceTime": {
+        "path": "/Applications/FaceTime.app",
+        "icon": "imgs/facetime.png"
+    },
+    "Roblox": {
+        "path": "/Applications/Roblox.app",
+        "icon": "imgs/roblox.png"
+    },
+    "VS Code": {
+        "path": "/Applications/Visual Studio Code.app",
+        "icon": "imgs/vscode.png"
+    },
+    "Adobe Acrobat Reader": {
+        "path": "/Applications/Adobe Acrobat Reader.app",
+        "icon": "/Users/johnpatti/AppLauncher/imgs/roblox.png"
+    }
+}

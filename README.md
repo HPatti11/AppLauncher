@@ -1,31 +1,39 @@
+# Full Screen Launcher
 
-
-
-# Full-Screen Python App Launcher
-
-A full-screen application launcher built in Python using **Tkinter** and **Pillow**. It displays high-resolution app icons on a customizable background image and allows you to launch popular applications like Chrome, FaceTime, Roblox, and Visual Studio Code.  
+A customizable full-screen app launcher built with Python and Tkinter.  
+Allows you to add apps with custom icons, drag and move them around, delete them, and set a static or GIF background.
 
 ---
 
 ## Features
 
-- Full-screen launcher window.
-- 2×2 grid layout for app icons.
-- High-resolution icons with transparency support.
-- Custom background image.
-- Keyboard shortcuts:
-  - `Escape`: Close launcher gracefully.
-  - `Q`: Forcefully quit the launcher.
-- Works on macOS (adjust commands for other OSes if needed).
+- **Full-screen launcher** on macOS.
+- **Add new apps** and assign custom icons.
+- **Drag & drop** app buttons anywhere on the screen.
+- **Right-click to delete** apps from the launcher.
+- **Change background** with static images or GIFs.
+- **Quick launch** for predefined apps: Chrome, FaceTime, Roblox, VSCode.
+- **Keyboard shortcuts**:
+  - `Escape` → Exit the launcher.
+  - `Q` → Quit the launcher immediately.
 
 ---
 
 ## Requirements
 
-- Python 3.10+  
-- [Pillow](https://pillow.readthedocs.io/en/stable/) (Python Imaging Library fork)
+- **Python 3.10+**
+- macOS (tested on Monterey and newer)
+- Python packages:
+  - `Pillow` for image handling
+- Tkinter (usually included with Python on macOS)
 
-Install dependencies via pip:
+---
 
-```bash
-pip install pillow
+## Installation
+
+1. **Clone or download** this repository.
+2. (Optional) Create a virtual environment:
+
+   ```bash
+   python3 -m venv .venv
+   source .venv/bin/activate
